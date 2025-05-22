@@ -18,6 +18,7 @@ export interface List {
 
 const KanBan = () => {
   const [lists, setLists] = useState<List[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -27,13 +28,19 @@ const KanBan = () => {
         setLists(JSON.parse(storedLists));
       }
     } catch (error) {
+      console.error("Error loading data from localStorage:", error);
       toast.error("Failed to load your boards. Please refresh the page.");
-    } 
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  // Save lists to localStorage whenever they change
   useEffect(() => {
+    if (!isLoading) {
       localStorage.setItem("lists", JSON.stringify(lists));
-  }, [lists]);
+    }
+  }, [lists, isLoading]);
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -42,7 +49,12 @@ const KanBan = () => {
       </header>
       
       <AddColumn lists={lists} setLists={setLists} />
-  {lists.length === 0 ? (
+      
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      ) : lists.length === 0 ? (
         <div className="mt-10 text-center p-8 bg-white rounded-lg shadow-md">
           <h2 className="text-xl font-semibold text-gray-700 mb-2">No Lists Yet</h2>
           <p className="text-gray-600 mb-4">Create your first list to get started with your kanban board.</p>
@@ -51,6 +63,9 @@ const KanBan = () => {
         <ColumnList lists={lists} setLists={setLists} />
       )}
       
+      <Toaster 
+        position="top-center"
+      />
     </div>
   );
 };
