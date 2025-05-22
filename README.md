@@ -1,70 +1,74 @@
-# Getting Started with Create React App
+# Kanban Board
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A simple Kanban board application built with React, similar to Trello. This project allows users to organize tasks using a visual board with drag-and-drop functionality.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Create and manage lists (columns) like "To Do", "In Progress", "Done"
+- Add cards (tasks) to any list
+- Drag and drop cards between lists to update their status
+- Drag and drop lists to reorder them
+- Edit card and list titles
+- Mark cards as complete or incomplete
+- Delete cards and lists
+- Data persistence using localStorage (your data is saved between sessions)
 
-### `npm start`
+## Technologies Used
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- React with TypeScript
+- TailwindCSS for styling
+- Hello-Pangea DnD for drag-and-drop functionality
+- React Hot Toast for notifications
+- UUID for generating unique IDs
+- LocalStorage for data persistence
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js (v16 or higher)
+- npm
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clone this repository or download the source code
+2. Navigate to the project directory
+3. Install dependencies:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Running the Application
 
-### `npm run eject`
+To start the development server:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```
+npm start
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Open [http://localhost:3000](http://localhost:3000) to view the application in your browser.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Building for Production
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+To create a production build:
 
-## Learn More
+```
+npm run build
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+This creates an optimized build in the `build` folder that you can deploy.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Usage Instructions
 
-### Code Splitting
+1. **Create a List**: Click the "Add New List" button to create a new column
+2. **Add a Card**: Click the "Add a card" button within any list to add a new task
+3. **Move Cards**: Drag and drop cards between lists to change their status
+4. **Reorder**: Drag and drop to reorder cards within a list or reorder the lists themselves
+5. **Edit**: Click the edit icon on any card or list to modify its text
+6. **Mark Complete**: Click the circle icon on a card to mark it as complete
+7. **Delete**: Click the trash icon to delete a card or list (lists can only be deleted when empty)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## License
 
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+MIT

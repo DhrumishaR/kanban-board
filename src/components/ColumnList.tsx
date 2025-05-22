@@ -1,5 +1,6 @@
-import { Card, List } from "./KanBan";
-import { Trash2, Plus, SquarePen, Check, CheckCircle } from "lucide-react";
+import React, { useState } from "react";
+import { List } from "./KanBan";
+import { Trash2, Plus, SquarePen, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
 import AddCards from "./AddCards";
 import { Input } from "./ui/input";
@@ -10,8 +11,6 @@ import {
   Droppable,
   DropResult,
 } from "@hello-pangea/dnd";
-import { parse } from "uuid";
-import { useState } from "react";
 
 export interface ColumnListProps {
   lists: List[];
@@ -19,12 +18,10 @@ export interface ColumnListProps {
 }
 
 const ColumnList: React.FC<ColumnListProps> = ({ lists, setLists }) => {
-  const [showAddCardMap, setShowAddCardMap] = useState<Record<string, boolean>>(
-    {}
-  );
+  const [showAddCardMap, setShowAddCardMap] = useState<Record<string, boolean>>({});
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState<string>("");
-
+  const [editingListId, setEditingListId] = useState<string | null>(null);
   const handleSetShowAddCard = (listId: string, show: boolean) => {
     setShowAddCardMap((prev) => ({
       ...prev,
@@ -33,107 +30,162 @@ const ColumnList: React.FC<ColumnListProps> = ({ lists, setLists }) => {
   };
 
   const handleAddCard = (listId: string) => {
-    handleSetShowAddCard(listId, true);
+    // Close any other open add card forms
+    const newShowAddCardMap = Object.keys(showAddCardMap).reduce((acc, key) => {
+      acc[key] = key === listId;
+      return acc;
+    }, {} as Record<string, boolean>);
+    
+    setShowAddCardMap({
+      ...newShowAddCardMap,
+      [listId]: true,
+    });
+    
+    // Cancel any ongoing edits
+    setEditingCardId(null);
+    setEditingListId(null);
   };
 
   const handleDeleteCard = (cardId: string, listId: string) => {
-    const getList = localStorage.getItem("lists");
-    const parsedList = JSON.parse(getList || "[]");
-
-    const findListIndex = parsedList.findIndex((l: List) => l.id === listId);
-    const findCardIndex = parsedList[findListIndex].cards.findIndex(
-      (c: List) => c.id === cardId
-    );
-
-    parsedList[findListIndex].cards.splice(findCardIndex, 1);
-
-    localStorage.setItem("lists", JSON.stringify([...parsedList]));
-    setLists(parsedList);
+    setLists(prevLists => {
+      return prevLists.map(list => {
+        if (list.id === listId) {
+          return {
+            ...list,
+            cards: list.cards.filter(card => card.id !== cardId)
+          };
+        }
+        return list;
+      });
+    });
+    
+    toast.success("Card deleted successfully");
   };
 
-  const handleDeleteColumn = (listId: string) => {
-    const getList = localStorage.getItem("lists");
-    const parsedList = JSON.parse(getList || "[]");
-
-    const findListIndex = parsedList.findIndex((l: List) => l.id === listId);
-    parsedList[findListIndex].cards.length > 0
-      ? toast.error("List is not empty, please delete all cards first")
-      : parsedList.splice(findListIndex, 1);
-
-    localStorage.setItem("lists", JSON.stringify([...parsedList]));
-    setLists(parsedList);
+  const handleDeleteColumn = (listId: string, listTitle: string) => {
+    const listToDelete = lists.find(list => list.id === listId);
+    
+    if (!listToDelete) return;
+    
+    if (listToDelete.cards.length > 0) {
+      toast.error("Cannot delete a list with cards. Please remove all cards first.");
+      return;
+    }
+    
+    setLists(prevLists => prevLists.filter(list => list.id !== listId));
+    toast.success(`List "${listTitle}" deleted successfully`);
   };
 
   const handleEditCard = (cardId: string, listId: string, newText: string) => {
-    const getList = localStorage.getItem("lists");
-    const parsedList = JSON.parse(getList || "[]");
-
-    const findListIndex = parsedList.findIndex((l: List) => l.id === listId);
-    const findCardIndex = parsedList[findListIndex].cards.findIndex(
-      (c: List) => c.id === cardId
-    );
-
-    parsedList[findListIndex].cards[findCardIndex].text = newText;
-
-    localStorage.setItem("lists", JSON.stringify([...parsedList]));
-    setLists(parsedList);
+    if (!newText.trim()) {
+      toast.error("Card text cannot be empty");
+      return;
+    }
+    
+    // Check for duplicate cards in the same list
+    const currentList = lists.find(list => list.id === listId);
+    const currentCard = currentList?.cards.find(card => card.id === cardId);
+    
+    if (currentList && currentCard && newText !== currentCard.text) {
+      if (currentList.cards.some(card => 
+        card.id !== cardId && card.text.toLowerCase() === newText.toLowerCase()
+      )) {
+        toast.error("A card with this text already exists in this list");
+        return;
+      }
+    }
+    
+    setLists(prevLists => {
+      return prevLists.map(list => {
+        if (list.id === listId) {
+          return {
+            ...list,
+            cards: list.cards.map(card => {
+              if (card.id === cardId) {
+                return { ...card, text: newText };
+              }
+              return card;
+            })
+          };
+        }
+        return list;
+      });
+    });
+    
+    toast.success("Card updated successfully");
     setEditingCardId(null);
     setEditingText("");
   };
 
   const handleToggleCompleted = (cardId: string, listId: string) => {
-    const getList = localStorage.getItem("lists");
-    const parsedList = JSON.parse(getList || "[]");
-
-    const findListIndex = parsedList.findIndex((l: List) => l.id === listId);
-    const findCardIndex = parsedList[findListIndex].cards.findIndex(
-      (c: List) => c.id === cardId
-    );
-
-    parsedList[findListIndex].cards[findCardIndex].completed =
-      !parsedList[findListIndex].cards[findCardIndex].completed;
-
-    localStorage.setItem("lists", JSON.stringify([...parsedList]));
-    setLists(parsedList);
+    setLists(prevLists => {
+      return prevLists.map(list => {
+        if (list.id === listId) {
+          return {
+            ...list,
+            cards: list.cards.map(card => {
+              if (card.id === cardId) {
+                return { ...card, completed: !card.completed };
+              }
+              return card;
+            })
+          };
+        }
+        return list;
+      });
+    });
   };
 
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, type } = result;
 
     if (!destination) return;
+    
+    // If dropped in the same position
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
 
-    const getList = localStorage.getItem("lists");
-    const parsedList = JSON.parse(getList || "[]");
-
+    // Handle column reordering
     if (type === "column") {
-      const [movedList] = parsedList.splice(source.index, 1);
-      parsedList.splice(destination.index, 0, movedList);
-      setLists(parsedList);
-      localStorage.setItem("lists", JSON.stringify(parsedList));
+      const reorderedLists = [...lists];
+      const [movedList] = reorderedLists.splice(source.index, 1);
+      reorderedLists.splice(destination.index, 0, movedList);
+      
+      setLists(reorderedLists);
+      toast.success("List reordered successfully");
+      return;
+    }
+
+    // Handle card movement
+    const sourceListIndex = lists.findIndex(list => list.id === source.droppableId);
+    const destListIndex = lists.findIndex(list => list.id === destination.droppableId);
+    
+    if (sourceListIndex === -1 || destListIndex === -1) return;
+    
+    const newLists = [...lists];
+    const sourceList = { ...newLists[sourceListIndex] };
+    const destList = sourceListIndex === destListIndex 
+      ? sourceList 
+      : { ...newLists[destListIndex] };
+    
+    const [movedCard] = sourceList.cards.splice(source.index, 1);
+    destList.cards.splice(destination.index, 0, movedCard);
+    
+    newLists[sourceListIndex] = sourceList;
+    if (sourceListIndex !== destListIndex) {
+      newLists[destListIndex] = destList;
+    }
+    
+    setLists(newLists);
+    
+    if (sourceListIndex === destListIndex) {
+      toast.success("Card reordered successfully");
     } else {
-      const sourceListIndex = parsedList.findIndex(
-        (l: List) => l.id === source.droppableId
-      );
-      const destinationListIndex = parsedList.findIndex(
-        (l: List) => l.id === destination.droppableId
-      );
-
-      const sourceList = parsedList[sourceListIndex];
-      const destinationList = parsedList[destinationListIndex];
-
-      if (sourceList === destinationList) {
-        const sourcecard = sourceList.cards[source.index];
-        sourceList.cards.splice(source.index, 1);
-        sourceList.cards.splice(destination.index, 0, sourcecard);
-        setLists(parsedList);
-        localStorage.setItem("lists", JSON.stringify(parsedList));
-      } else {
-        const sourceCard = sourceList.cards[source.index];
-        sourceList.cards.splice(source.index, 1);
-        destinationList.cards.splice(destination.index, 0, sourceCard);
-        setLists(parsedList);
-        localStorage.setItem("lists", JSON.stringify(parsedList));
-      }
+      toast.success(`Card moved to "${destList.title}"`);
     }
   };
 
@@ -144,44 +196,47 @@ const ColumnList: React.FC<ColumnListProps> = ({ lists, setLists }) => {
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className="flex gap-6 mt-6 px-4 pb-4 w-full"
+            className="flex gap-6 mt-6 px-4 pb-4 w-full overflow-x-auto min-h-[70vh]"
           >
             {lists.map((list, index) => (
-                    <Draggable
-                      draggableId={list.id}
-                      index={index}
-                    >
-                      {(provided) => (
-                        <div
-                          key={list.id}
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                          className="bg-gray-100 rounded-xl w-64 p-4 flex-shrink-0 shadow-md h-auto"
-                        >
-                          <Droppable droppableId={list.id} type="card">
+              <Draggable key={list.id} draggableId={list.id} index={index}>
                 {(provided) => (
                   <div
                     ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="flex flex-col gap-2 min-h-[40px]"
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                    className="bg-secondary rounded-xl w-72 p-4 flex-shrink-0 shadow-card hover:shadow-card-hover transition-shadow duration-200 h-auto"
                   >
+                    <Droppable droppableId={list.id} type="card">
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="flex flex-col gap-2 min-h-[40px]"
+                        >
                           {/* Header */}
-                          <div className="flex items-center justify-between mb-3">
-                            <h2 className="text-md font-semibold text-gray-800">
-                              {list.title}
-                            </h2>
-                            <Trash2
-                              onClick={() => handleDeleteColumn(list.id)}
-                              size={15}
-                              className="cursor-pointer"
-                            />
+                          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  <h2 className="text-md font-semibold text-gray-800">
+                                    {list.title}
+                                  </h2>
+                                  <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                                    {list.cards.length}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Trash2
+                                    size={16}
+                                    className="cursor-pointer text-gray-500 hover:text-error"
+                                    onClick={() => handleDeleteColumn(list.id, list.title)}
+                                  />
+                                </div>
                           </div>
 
                           {/* Cards */}
-                          <div className="flex flex-col gap-2">
-                            {list.cards.length?(
-                              (list.cards.map((card, index) => (
+                          <div className="flex flex-col gap-2 mb-3">
+                            {list.cards.length > 0 ? (
+                              list.cards.map((card, index) => (
                                 <Draggable
                                   key={card.id}
                                   draggableId={card.id}
@@ -192,120 +247,103 @@ const ColumnList: React.FC<ColumnListProps> = ({ lists, setLists }) => {
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       {...provided.dragHandleProps}
-                                      className={`flex justify-between items-center bg-white rounded-md p-2 w-full ${
-                                        card.completed ? "line-through" : ""
-                                      }`}
+                                      className={`bg-card rounded-md p-3 w-full shadow-sm 
+ 
+                                        ${card.completed ? "bg-gray-50" : ""}
+                                        transition-all duration-200 hover:shadow-md`}
                                     >
-                                      <div
-                                        key={card.id}
-                                        className={`flex justify-between items-center bg-white rounded-md p-2 w-full ${
-                                          card.completed ? "line-through" : ""
-                                        }`}
-                                      >
-                                        <div className="flex items-center gap-2">
-                                          <div className="relative group">
-                                            <Input
-                                              type="radio"
-                                              checked={card.completed}
-                                              className={`w-4 h-4 rounded-full border-2 transition z-0 duration-200 cursor-pointer
-      ${card.completed ? "bg-black border-black" : "bg-white border-gray-400"}
-    `}
-                                              onClick={() =>
-                                                handleToggleCompleted(
-                                                  card.id,
-                                                  list.id
-                                                )
-                                              }
+                                      {editingCardId === card.id ? (
+                                        <div className="flex flex-col gap-2">
+                                          <Input
+                                            value={editingText}
+                                            onChange={(e) => setEditingText(e.target.value)}
+                                            className="text-sm text-gray-700 border p-1 rounded w-full"
+                                            autoFocus
+                                          />
+                                          <div className="flex justify-end gap-2">
+                                            <Check
+                                              size={16}
+                                              className="cursor-pointer text-success hover:text-success/80"
+                                              onClick={() => handleEditCard(card.id, list.id, editingText)}
                                             />
-                                            <span className="absolute text-xs top-full left-1/2 mt-1 px-2 py-1 rounded bg-gray-800 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                              {card.completed
-                                                ? "Mark Incompleted"
-                                                : "Mark Completed"}
-                                            </span>
+                                            <X
+                                              size={16}
+                                              className="cursor-pointer text-error hover:text-error/80"
+                                              onClick={() => setEditingCardId(null)}
+                                            />
                                           </div>
-
-                                          {editingCardId === card.id ? (
-                                            <Input
-                                              value={editingText}
-                                              onChange={(e) =>
-                                                setEditingText(e.target.value)
-                                              }
-                                              className="text-sm text-gray-600 border p-1 rounded w-full mr-2"
-                                            />
-                                          ) : (
-                                            <p className="text-sm text-gray-600">
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-between items-start">
+                                          <div className="flex items-start gap-2">
+                                            <div 
+                                              className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded-full border cursor-pointer
+                                                ${card.completed 
+                                                  ? "bg-success border-success" 
+                                                  : "border-gray-400 hover:border-gray-600"}`}
+                                              onClick={() => handleToggleCompleted(card.id, list.id)}
+                                            >
+                                              {card.completed && (
+                                                <Check size={14} className="text-white" />
+                                              )}
+                                            </div>
+                                            <p className={`text-sm ${card.completed 
+                                              ? "text-gray-500 line-through" 
+                                              : "text-gray-700"}`}>
                                               {card.text}
                                             </p>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          {editingCardId === card.id ? (
-                                            <Check
-                                              size={15}
-                                              className="cursor-pointer text-green-600"
-                                              onClick={() =>
-                                                handleEditCard(
-                                                  card.id,
-                                                  list.id,
-                                                  editingText
-                                                )
-                                              }
-                                            />
-                                          ) : (
-                                            <SquarePen
-                                              size={15}
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              className="p-1 rounded-full hover:bg-gray-100"
                                               onClick={() => {
                                                 setEditingCardId(card.id);
                                                 setEditingText(card.text);
                                               }}
-                                              className="cursor-pointer"
-                                            />
-                                          )}
-                                          {card.completed && (
-                                            <Trash2
-                                              size={15}
-                                              onClick={() =>
-                                                handleDeleteCard(
-                                                  card.id,
-                                                  list.id
-                                                )
-                                              }
-                                              className="cursor-pointer"
-                                            />
-                                          )}
+                                            >
+                                              <SquarePen size={14} className="text-gray-500" />
+                                            </button>
+                                            <button
+                                              className="p-1 rounded-full hover:bg-gray-100"
+                                              onClick={() => handleDeleteCard(card.id, list.id)}
+                                            >
+                                              <Trash2 size={14} className="text-gray-500" />
+                                            </button>
+                                          </div>
                                         </div>
-                                      </div>
+                                      )}
                                     </div>
                                   )}
                                 </Draggable>
-                              )))):"NO Cards"}
+                              ))
+                            ) : (
+                              <div className="text-center py-4 text-sm text-gray-500 italic bg-gray-50 rounded-md">
+                                No cards yet
+                              </div>
+                            )}
+                            {provided.placeholder}
                           </div>
 
+                          {/* Add Card Button/Form */}
                           {showAddCardMap[list.id] ? (
-                            <div className="pt-2">
-                              <AddCards
-                                list={list}
-                                setShowAddCard={() =>
-                                  handleSetShowAddCard(list.id, false)
-                                }
-                                setLists={setLists}
-                              />
-                            </div>
+                            <AddCards
+                              list={list}
+                              setShowAddCard={(show) => handleSetShowAddCard(list.id, show)}
+                              setLists={setLists}
+                            />
                           ) : (
                             <Button
                               onClick={() => handleAddCard(list.id)}
-                              disabled={editingCardId !== null}
-                              className={`w-full flex items-center justify-start gap-2 text-sm font-semibold mt-2 hover:bg-gray-200 p-2 rounded-md
-              ${
-                editingCardId !== null
-                  ? "opacity-50 cursor-not-allowed"
-                  : "text-[#44546F]"
-              }`}
+                              disabled={editingCardId !== null || editingListId !== null}
+                              className={`w-full flex items-center justify-center gap-2 text-sm font-medium 
+                                bg-transparent hover:bg-gray-200 text-gray-700 p-2 rounded-md border border-gray-200
+                                ${(editingCardId !== null)
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""}`}
                             >
                               <Plus size={16} /> Add a card
                             </Button>
                           )}
-                    {provided.placeholder}
                         </div>
                       )}
                     </Droppable>
